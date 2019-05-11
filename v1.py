@@ -70,6 +70,8 @@ Prices = np.array([   7,   9,   0,  11,10.5,   0, 4.5,   0,  10,  14,   0,   0, 
 
 
 # Calculate
+
+# INCORRECT
 approvPts = np.arange(len(A))[ np.invert( [( 1 in A[i]) for i in range(len(A))] ) ]
 consumPts = np.arange(len(A))[ np.invert( [(-1 in A[i]) for i in range(len(A))] ) ]
 intermPts = np.arange(len(A))[ np.logical_and( [( 1 in A[i]) for i in range(len(A))] ,
