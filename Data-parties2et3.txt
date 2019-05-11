@@ -1,0 +1,10 @@
+Mêmes données que pour la partie 1 avec en plus 
+
+Cout de constructions d'un château d'eau  = 30 millions (en euros par mètre supplémentaire)
+Hauteur maximale/fixe d'un château d'eau  = 1,70 (en mètres)
+Budget total de construction des chateaux = 120 millions (en euros)
+
+Cout de construction d'une conduite      = 2200 (en euros par m^3)
+                                           Notez qu'avec ce chiffre le coût total de construction du réseau initialement donné
+                                           est approximativement égal au bénéfice d'exploitation du modèle II.3 sur l'horizon 
+                                           de dix ans (et donc avec un bilan "exploitation-construction" approximativement nul)
