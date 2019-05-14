@@ -126,3 +126,32 @@ print(x)
 # # In case max prod and cons given in 1 array
 # maxProd  = np.zeros(len(P)) ; maxProd[approvPts] = MaxProdCons[approvPts]
 # maxCons  = np.zeros(len(P)) ; maxProd[consumPts] = MaxProdCons[consumPts]
+
+
+"""
+ALeftInv = np.linalg.inv(A.T@A)@A.T
+
+c = np.zeros(m)
+c[Apts] += Acost ; c[Cpts] += Cprices
+
+A_ub1 =  ALeftInv
+b_ub1 =  maxDeb
+A_ub2 = -ALeftInv
+b_ub2 =  np.zeros(n)
+A_ub3 =  np.identity(n)[Cpts]
+b_ub3 =  Cmaxdeb
+A_ub4 = -np.identity(n)[Cpts]
+b_ub4 = -Cmindeb
+A_ub5 =  np.identity(n)[Apts]
+b_ub5 =  Amaxdeb
+A_ub  = np.vstack(     [A_ub1,A_ub2,A_ub3,A_ub4,A_ub5])
+b_ub  = np.concatenate([b_ub1,b_ub2,b_ub3,b_ub4,b_ub5])
+
+A_eq = np.identity(n)[Ipts]
+b_eq = np.zeros(len(Ipts))
+
+x = linprog(-c, A_ub, b_ub, A_eq, b_eq); x.fun = -x.fun
+
+print("Maximum :")
+print(x.fun)
+"""

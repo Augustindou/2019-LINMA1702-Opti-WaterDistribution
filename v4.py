@@ -18,51 +18,6 @@
 #
 # Dans un premier temps, un réseau existant sera analysé, ainsi que son coût de fonctionnement. Ensuite, des améliorations du réseau seront proposées, au moyen de la construction de châteaux d’eau. La dernière partie traitera de la conception d’un réseau optimal (topologie et dimensionnement des conduites).
 #
-### Description générale
-#
-#### Modélisation
-# Le réseau de distribution d'eau est constitué de
-# - $m$ points du réseau dont :
-#     - $s$ points d’approvisionnement (c’est-à-dire de sources dont on extrait l’eau), <br>
-#       l'ensemble des indices des points d'approvisionnement sera noté $\mathcal{S}$.
-#     - $c$ points de consommation (d’où l’eau est envoyée vers les clients finaux), <br>
-#       l'ensemble des indices des points de consommation sera noté $\mathcal{C}$.
-#     - $k$ points intermédiaires (sans approvisionnement ni consommation), <br>
-#       l'ensemble des indices des points intermédiaires sera noté $\mathcal{I}$.
-# - $n$ conduites reliant 2 points du réseau (d'approvisionnement/de consommation/intermédiaires).
-#
-#### Hypothèses
-# - Le réseau est supposé en régime stationnaire, les débits dans les conduites sont constants.
-# - L'eau s'écoule toujours du haut vers le bas, il n'y a pas de pompe ou de phénomène de siphonnage. Par conséquent, pour une conduite $j$ reliant un point A à un point B, la différence de hauteur entre les extémités de la conduite $\Delta h_j = h_{B}-h_{A} < 0$ pour toutes les conduites.
-# - Le débit $f_j$ de l’eau qui s’écoule dans une conduite $j$ est donné par l’expression
-# $$f_j = \alpha \theta_j \frac{R_j^2 \Delta h_j}{L_j}   \hspace{1.5cm}\text{avec $0 \leq \theta_j \leq 1, \forall j \in \{1, ..., n\}$}$$
-# où $\alpha$ est une constante de proportionnalité, $R_j$ est le rayon de la conduite, $L_j$ sa longueur, $\Delta h_j$ la différence de hauteur entre les extrémités de la conduite et $\theta_j$  un paramètre ajustable compris entre 0 et 1. Ce paramètre permettant de réguler le débit est implémenté à l’aide d’une valve.
-# - Le débit d’eau extrait aux points d'approvisionnement est supposé suffisant pour alimenter toutes les conduites qui y sont reliées.
-# - Les coûts liés à l'extraction et la circulation de l'eau se rapportent à une année de fonctionnement, de même que les prix facturés pour la consommation.
-#
-#### Notations
-# Le tableau suivant regroupe tous les paramètres et les variables qui seront utilisés tout au long de ce rapport, ainsi que leurs unités associées. En outre, il est à noter que tous les vecteurs sont, par défaut, des vecteurs colonnes.
-#
-# | __Paramètres/Variables__ | __Signification__                                                        | __Unités__ |
-# |--------------------------|--------------------------------------------------------------------------|------------|
-# | $i$                      | Indice des points du réseau, $i \in \{1,...,m\}$                         | -          |
-# | $j$                      | Indice des conduites, $j \in \{1,...,n\}$                                | -          |
-# | $\mathcal{S}$            | Ensemble des indices des points d'approvisionnement du réseau            | -          |
-# | $\mathcal{C}$            | Ensemble des indices des points de consommation du réseau                | -          |
-# | $\mathcal{I}$            | Ensemble des indices des points intermédiaires du réseau                 | -          |
-# | $\Delta h_j$             | Différence de hauteur entre les deux extrémités d'une conduite $j$       | m          |
-# | $f_j$                    | Débit de l'eau qui s'écoule dans une conduite $j$                        | m$^3$/h    |
-# | $\alpha$                 | Constante de proportionnalité, dans le calcul du débit dans une conduite | -          |
-# | $\theta_j$               | Paramètre ajustable permettant le débit dans une conduite $j$ (caractérisant l'ouverture de la valve), $\in [0,1]$ | - |
-# | $R_j$                    | Rayon d'une conduite $j$                                                 | m          |
-# | $L_j$                    | Longueur d'une conduite $j$                                              | m          |
-# | $d_i$                    | Débit en un point $i$ du réseau de distribution                  | m$^3$/h    |
-
-# %%
-import numpy as np
-from scipy.optimize import linprog
-# %% [markdown]
-### Partie 1 : Analyse d'un réseau existant
 #### Données utilisées dans le code:
 # - __P__ : la position des points (x,y,z) [m]
 # - __A__ : la matrice d'incidence [-]
@@ -83,10 +38,9 @@ from scipy.optimize import linprog
 #__Intermédiaires__
 # - __I_pts__ : les indices des points intermédiaires [-]
 
-# %% [markdown]
-##### Commençons par introduire les variables dans notre code python :
-
 # %%
+import numpy as np
+from scipy.optimize import linprog
 P = np.array([[-9.6,  2.7, 0.08394446], [-9.6, -2.7, 0.04472090],
               [-6.9,  7.1, 0.09969025], [-6.9, -7.1, 0.01909555],
               [-9.0,  3.2, 0.08757438], [-9.0, -3.2, 0.04152830],
@@ -217,7 +171,7 @@ C_price = 0.9
 
 I_pts = np.array([5, 6, 7, 11, 12, 15, 19, 20, 21, 22, 23, 25, 26, 27, 29, 30, 31, 35, 37, 38, 39, 40, 41, 43, 44, 45, 46, 48, 50, 51, 52, 53, 54, 56, 57, 58, 59, 60, 61, 62, 63, 65, 66, 68, 69, 70, 71, 72, 73, 74, 75])
 # %% [markdown]
-##### Calculons ensuite certaines valeurs qui pourraient nous être bien utiles :
+##### Calcul de valeurs, vecteurs et matrices utiles :
 
 # %%
 m = len(A)
@@ -233,25 +187,8 @@ length = np.sqrt(dX**2 + dY**2 + dZ**2)
 maxDeb = -(alpha*R*R*dZ/length)
 C_prices = np.full(len(C_pts), C_price)
 # %% [markdown]
-#### Expressions $\mathbf{A^Th}$ et $\mathbf{Af}$
-
-# %% [markdown]
-#### Profils de consommation
-
-# %% [markdown]
-#### Maximisation du bénéfice
-
-# %% [markdown]
-#### Résolution numérique
-# À partir du problème modélisé ci-dessus et grâce à scipy.optimize.linprog, on peut maximiser le bénéfice.
-
-# %% [markdown]
-# Nous avons théoriquement 2 possibilités dans le choix de nos variables :
-# - les débits dans les conduites ($f$)
-# - le bilan des débits en chaque point ($d$)
-#
-#Nous avons décidé de prendre les débits dans les conduites comme variables, car l'autre possibilité impliquait de trouver une inverse à gauche pour la matrice d'incidence ($A^{-1}_G = (A^TA)^{-1}A^{T}$), ce qui pose problème dans le cas où $A^TA$ est une matrice singulière (ce qui est le cas avec les données fournies).
-##### Nous pouvons donc construire nos matrices et optimiser grâce à scipy.optimize.linprog() :
+### Partie 1 : Analyse d'un réseau existant
+#### Résolution numérique de la maximisation du bénéfice
 
 # %%
 c1 = C_prices @ A[C_pts]
@@ -276,29 +213,32 @@ b_eq = np.zeros(len(I_pts))
 
 x = linprog(-c, A_ub, b_ub, A_eq, b_eq); x.fun = -x.fun
 
-theta = x.x/maxDeb
-print("Vecteur Theta :")
-print(theta)
-print("Maximum :")
+theta = x.x / maxDeb
+bilan = A @ x.x
+# %% [markdown]
+##### Maximum :
 print(x.fun)
 # %% [markdown]
-### Partie 2 :
-#### Données utilisées dans le code:
-# - __P__ : la position des points (x,y,z) [m]
-# - __A__ : la matrice d'incidence [-]
-# - __alpha__ : constante [m/h]
-# - __R__ : rayon des conduites (identique pour toutes les conduites) [m]
-#
-#__Approvisionnement__
-# - __A_pts__ : les indices des points d'approvisionnement [-]
-# - __A_maxDeb__ : le débit maximal extractible en chaque point d'approvisionnement [m$^3$/h]
-# - __A_cost__ : le coût d'extraction en chaque point d'approvisionnement [€/m$^3$]
-#
-#__Consommation__
-# - __C_pts__ : les indices des points de consommation [-]
-# - __C_minDeb__ : le débit minimal consommable en consommable en chaque point de consommation [m$^3$/h]
-# - __C_maxDeb__ : le débit maximal consommable en consommable en chaque point de consommation [m$^3$/h]
-# - __C_price__ : le prix facturé (identique pour tous les points de consommation) [€/m$^3$]
-#
-#__Intermédiaires__
-# - __I_pts__ : les indices des points intermédiaires [-]
+##### Vecteur Theta (comment positionner les vannes) :
+for i in range(len(theta)) :
+    print(str(i+1) + " : " + str(theta[i]))
+# %% [markdown]
+##### Bilan des débits en chaque point d'approvisionnement et de consommation :
+# %%
+print("Extraction aux points d'approvisionnement")
+for i in A_pts :
+    print("    " + str(i+1) + " : " + str(-bilan[i]) + "   [m^3/h]")
+print("Consommation aux points de consommation")
+for i in C_pts :
+    print("    " + str(i+1) + " : " + str( bilan[i]) + "   [m^3/h]")
+# %% [markdown]
+### Partie 2 : Améliorations du réseau
+
+# %% [markdown]
+#### Dépassement de la consommation pour une réduction du prix
+
+# %% [markdown]
+#### Dépassement de la consommation pour une augmentation du prix
+
+# %% [markdown]
+####
