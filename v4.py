@@ -203,7 +203,7 @@ A_ub3 =  A[C_pts]
 b_ub3 =  C_maxDeb
 A_ub4 = -A[C_pts]
 b_ub4 = -C_minDeb
-A_ub5 =  A[A_pts]
+A_ub5 = -A[A_pts]
 b_ub5 =  A_maxDeb
 A_ub  = np.vstack(     [A_ub1,A_ub2,A_ub3,A_ub4,A_ub5])
 b_ub  = np.concatenate([b_ub1,b_ub2,b_ub3,b_ub4,b_ub5])
@@ -227,10 +227,10 @@ for i in range(len(theta)) :
 # %%
 print("Extraction aux points d'approvisionnement")
 for i in A_pts :
-    print("    " + str(i+1) + " : " + str(-bilan[i]) + "   [m^3/h]")
+    print("    " + str(i+1) + " : " + str(np.round(-bilan[i], 1)) + "   [m^3/h]")
 print("Consommation aux points de consommation")
 for i in C_pts :
-    print("    " + str(i+1) + " : " + str( bilan[i]) + "   [m^3/h]")
+    print("    " + str(i+1) + " : " + str(np.round( bilan[i], 1)) + "   [m^3/h]")
 # %% [markdown]
 ### Partie 2 : Améliorations du réseau
 

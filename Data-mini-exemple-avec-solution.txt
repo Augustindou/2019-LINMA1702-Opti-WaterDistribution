@@ -154,13 +154,13 @@ A = np.array([
 alpha = 10**6
 R = 1
 
-Apts = np.array([2, 6])
-Amaxdeb = np.array([10000, 5000])
-Acost = np.array([0.2, 0.3])
+A_pts = np.array([2, 6])
+A_maxDeb = np.array([10000, 5000])
+A_cost = np.array([0.2, 0.3])
 
-Cpts = np.array([1, 4, 10, 20, 23])
-Cmindeb = np.array([200, 200, 200, 200, 200])
-Cmaxdeb = np.array([4000,2000,2000,3000,2000])
-Cprice = 0.9
+C_pts = np.array([1, 4, 10, 20, 23])
+C_minDeb = np.array([200, 200, 200, 200, 200])
+C_maxDeb = np.array([4000,2000,2000,3000,2000])
+C_price = 0.9
 
-Ipts = np.array([3, 5, 7, 8, 9, 11, 12, 13, 14, 15, 16, 17, 18, 19, 21, 22])
+I_pts = np.array([3, 5, 7, 8, 9, 11, 12, 13, 14, 15, 16, 17, 18, 19, 21, 22])
