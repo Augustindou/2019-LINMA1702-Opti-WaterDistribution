@@ -183,17 +183,17 @@ I_pts -= np.ones(len(I_pts), dtype=int)
 dX = A.T @ P[:,0]
 dY = A.T @ P[:,1]
 dZ = A.T @ P[:,2]
-length = np.sqrt(dX**2 + dY**2 + dZ**2)
+length = np.sqrt(dX**2 + dY**2)
 maxDeb = -(alpha*R*R*dZ/length)
 C_prices = np.full(len(C_pts), C_price)
+
+Prices = np.zeros(m) ; Prices[C_pts] = C_prices ; Prices[A_pts] = A_cost
 # %% [markdown]
 ### Partie 1 : Analyse d'un réseau existant
 #### Résolution numérique de la maximisation du bénéfice
 
 # %%
-c1 = C_prices @ A[C_pts]
-c2 = A_cost   @ A[A_pts]
-c = c1 + c2
+c = Prices.T @ A
 
 A_ub1 =  np.identity(n)
 b_ub1 =  maxDeb
@@ -235,10 +235,49 @@ for i in C_pts :
 ### Partie 2 : Améliorations du réseau
 
 # %% [markdown]
-#### Dépassement de la consommation pour une réduction du prix
+#### Résolution numérique du dépassement de la demande conduisant à une diminution du prix
 
-# %% [markdown]
-#### Dépassement de la consommation pour une augmentation du prix
+# %%
+Prices_surpl = np.copy(Prices) ; Prices_surpl[C_pts] = Prices_surpl[C_pts] / 2
+c1 = Prices      .T @ A
+c2 = Prices_surpl.T @ A
+c = np.concatenate([c1, c2])
 
+A_ub1 =  np.hstack( [ np.identity(n), np.identity(n) ] )
+b_ub1 =  maxDeb
+A_ub2 = -np.hstack( [ np.identity(n), np.identity(n) ] )
+b_ub2 =  np.zeros(n)
+A_ub3a=  np.hstack( [ A[C_pts]      , np.zeros(A[C_pts].shape) ] )
+b_ub3a=  C_maxDeb
+A_ub3b=  np.hstack( [ np.zeros(A[C_pts].shape) , A[C_pts]      ] )
+b_ub3b=  C_maxDeb*0.25
+A_ub4 = -np.hstack( [ A[C_pts]      , A[C_pts]       ] )
+b_ub4 = -C_minDeb
+A_ub5 = -np.hstack( [ A[A_pts]      , A[A_pts]       ] )
+b_ub5 =  A_maxDeb
+A_ub  = np.vstack(     [A_ub1,A_ub2,A_ub3a,A_ub3b,A_ub4,A_ub5])
+b_ub  = np.concatenate([b_ub1,b_ub2,b_ub3a,b_ub3b,b_ub4,b_ub5])
+
+A_eq = np.hstack([ A[I_pts] , A[I_pts] ])
+b_eq = np.zeros(len(I_pts))
+
+x = linprog(-c, A_ub, b_ub, A_eq, b_eq); x.fun = -x.fun
+
+theta = (x.x[:n] + x.x[n:]) / maxDeb
+bilan = A @ (x.x[:n] + x.x[n:])
 # %% [markdown]
-####
+##### Maximum :
+print(x.fun)
+# %% [markdown]
+##### Vecteur Theta (comment positionner les vannes) :
+for i in range(len(theta)) :
+    print(str(i+1) + " : " + str(theta[i]))
+# %% [markdown]
+##### Bilan des débits en chaque point d'approvisionnement et de consommation :
+# %%
+print("Extraction aux points d'approvisionnement")
+for i in A_pts :
+    print("    " + str(i+1) + " : " + str(np.round(-bilan[i], 1)) + "   [m^3/h]")
+print("Consommation aux points de consommation")
+for i in C_pts :
+    print("    " + str(i+1) + " : " + str(np.round( bilan[i], 1)) + "   [m^3/h]")
