@@ -237,7 +237,7 @@ for i in C_pts :
 Prices_surpl = np.copy(Prices) ; Prices_surpl[C_pts] = Prices_surpl[C_pts] / 2
 c1 = Prices      .T @ A
 c2 = Prices_surpl.T @ A
-c3 = np.full(m, wt_price/(1000*365*24*wt_rentTime))
+c3 = - np.full(m, wt_price/(1000*365*24*wt_rentTime))
 c = np.concatenate([c1, c2, c3])
 
 A_ub1 =  np.hstack( [ np.identity(n) , np.identity(n) , -A.T*debFactor[:,None] ] )
