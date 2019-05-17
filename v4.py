@@ -45,7 +45,7 @@
 # - __wt_pts__ : points où on peut construire un chateau d'eau [-]
 # - __wt_maxH__ : hauteur maximale d'un chateau d'eau [m]
 #
-#__III.2__
+#__Conception d'un réseau optimal__
 # - __opt_rentTime__ : durée pour rentabilisation [années]
 # - __opt_condPrice__ : prix d'une conduite [€/m$^3$]
 
@@ -328,8 +328,18 @@ for i in C_pts :
     print("    " + str(i+1) + " : " + str(np.round( bilan[i], 1)))
 
 # %% [markdown]
-#### Résolution numérique du dépassement de la demande conduisant à une diminution du prix
-
+#### Résolution numérique du problème des châteaux d'eau
+##### Correspondance entre la modélisation et le le code :
+#  - __c__ : $\hspace{1cm} \underset{\underset{j=1,...,n;\ i=1,...,m}{f_j, f_{surplus,j}, \delta  z_i}}{\text{maximiser}} \hspace{0.5cm} (\mathbf{p_{tot}}^T \mathbf{A_{tot} f_{tot}}) - \frac{\gamma \mathbf{1}_m \mathbf{\delta z}}{87648}$
+#  - __ub_1__ : $\hspace{1.5cm} f_j + f_{surplus,j} - (\mathbf{a}_j^T \mathbf{\delta z}) f_{max,j}  \leq   f_{max,j} \hspace{1.5cm} \forall j \in \{1,...,n\}$
+#  - __ub_2__ : $\hspace{1.5cm} \mathbf{a}_i \mathbf{f} \leq   d_{max,i} \hspace{1.5cm} \forall i \in \mathcal{C}$
+#  - __ub_3__ : $\hspace{1.5cm} \mathbf{a}_i \mathbf{f_{surplus}} \leq   \frac{1}{4} d_{max,i} \hspace{1.5cm} \forall i \in \mathcal{C}$
+#  - __ub_4__ : $\hspace{1.5cm} \mathbf{a}_i \mathbf{f} + \mathbf{a}_i \mathbf{f_{surplus}} \geq   d_{min,i} \hspace{1.5cm} \forall i \in \mathcal{C}$
+#  - __ub_5__ : $\hspace{1.5cm} - (\mathbf{a}_i \mathbf{f} + \mathbf{a}_i \mathbf{f_{surplus}}) \leq   d_{max,i} \hspace{1.5cm} \forall i \in \mathcal{S}$
+#  - __ub_6__ : $\hspace{1.5cm} \gamma \mathbf{1}_m \mathbf{\delta z}  \leq  B $
+#  - __eq__ :   $\hspace{1.95cm} \mathbf{a}_i \mathbf{f} + \mathbf{a}_i \mathbf{f_{surplus}} =      0         \hspace{1.5cm} \forall i \in \mathcal{I}$
+#  - __bounds1__ : $\hspace{0.9cm} 0 \leq f_j, f_{surplus,j}          \hspace{1.5cm} \forall j \in \{1,...,n\}$
+#  - __bounds2__ : $\hspace{0.9cm} 0 \leq \delta z_i \leq  h_{max}    \hspace{1.5cm} \forall i \in \mathcal{C}$
 # %%
 Prices_surpl = np.copy(Prices) ; Prices_surpl[C_pts] = Prices_surpl[C_pts] / 2
 c1 = Prices      .T @ A
@@ -366,24 +376,28 @@ bounds  = np.concatenate([bounds1, bounds2])
 A_eq  =  np.hstack( [ A[I_pts], A[I_pts]                , np.zeros((len(A[I_pts]),m)) ] )
 b_eq  =  np.zeros(len(I_pts))
 
-x = linprog(-c, A_ub, b_ub, A_eq, b_eq, bounds, options={"disp": True}); x.fun = -x.fun
+x = linprog(-c, A_ub, b_ub, A_eq, b_eq, bounds); x.fun = -x.fun
 
 theta = (x.x[0:n] + x.x[n:2*n]) / maxDeb
 bilan = A @ (x.x[0:n] + x.x[n:2*n])
 # %% [markdown]
-##### Maximum :
-print(x)
-print("=======")
-print(x.fun)
-print(x.fun*24*365*10)
-print("=======")
+##### Output :
+
+#%%
+print("Maximum horaire : " + str(x.fun))
+print("Maximum sur 10 ans : " + str(x.fun*24*365*10))
 print("Coûts [€/h] : " + str(Prices[A_pts].T @ A[A_pts] @ x.x[0:n] + Prices_surpl[A_pts].T @ A[A_pts] @ x.x[n:2*n]))
 print("Vente [€/h] : " + str(Prices[C_pts].T @ A[C_pts] @ x.x[0:n] + Prices_surpl[C_pts].T @ A[C_pts] @ x.x[n:2*n]))
-print("=======")
-print("Chateaux : " + str(wt_price*1000*np.sum(x.x[2*n:])))
+print("Prix des chateaux d'eau : " + str(wt_price*1000*np.sum(x.x[2*n:])))
+print("Extraction aux points d'approvisionnement [m^3/h]")
+for i in A_pts :
+    print("    " + str(i+1) + " : " + str(np.round(-bilan[i], 1)))
+print("Consommation aux points de consommation [m^3/h]")
+for i in C_pts :
+    print("    " + str(i+1) + " : " + str(np.round( bilan[i], 1)))
 # %% [markdown]
 ### Partie 3 : Améliorations du réseau
-#### Résolution numérique du dépassement de la demande conduisant à une diminution du prix
+#### Résolution numérique de la recherche d'un réseau optimal
 ##### Création de la matrice d'incidence
 
 # %%
@@ -413,8 +427,11 @@ dZ = A.T @ P[:,2]
 length = np.sqrt(dX*dX + dY*dY + dZ*dZ)
 debFactor = -(alpha/length)*dZ
 
-# %%
+# %% [markdown]
+##### Correspondance entre la modélisation et le le code :
+# Notre modélisation consiste à introduire la possibilité d'une conduite entre chaque paire de points, quelle qu'elle soit. Nos inconnues sont les carrés des rayons de ces conduites. Nous ne tenons pas compte des paramètres $\theta_j$ parce que la maximisation du gain implique la minimisation des rayons pour un flux donné, ce qui implique que les $\theta_j$ seront tous égaux à 1. Si une conduite n'est pas nécessaire, $R^2_j$ vaudra $0$ pour cette conduite. Le réseai optimal sera donc celui constitué des conduites de rayon non nul.
 
+# %%
 c1 = Prices      .T @ A *365*24*opt_rentTime
 c2 = Prices_surpl.T @ A *365*24*opt_rentTime
 c3 = np.pi*length*1000*opt_condPrice
@@ -441,10 +458,10 @@ b_eq  =  np.zeros(len(I_pts))
 bounds = np.array([(0.0, None) for i in range(2*n)])
 
 
-x = linprog(-c, A_ub, b_ub, A_eq, b_eq, bounds, options={"disp": True}); x.fun = -x.fun
-print(x)
+x = linprog(-c, A_ub, b_ub, A_eq, b_eq, bounds); x.fun = -x.fun
+
 rC = np.sqrt(x.x[0:n] + x.x[n:2*n])
 
 for i in range(n):
   if rC[i] > 0:
-    print("conduite " + str(i) + " => rayon = " + str(rC[i]) + " -- pt de départ : " + str(A[:,i].argmin()) + " -- pt d'arrivée : " + str(A[:,i].argmax()) + "-- longueur : " + str(length[i]))
+    print("Conduite : " + str(A[:,i].argmin()+1) + " => " + str(A[:,i].argmax()+1)+ "  rayon : " +str(np.round(rC[i], 3)) + " ; longueur : " + str(np.round(length[i], 3)))
