@@ -43,11 +43,16 @@
 # - __wt_price__ : prix de construction d'un chateau d'eau [€/m]
 # - __wt_rentTime__ : durée pour rentabilisation [années]
 # - __wt_pts__ : points où on peut construire un chateau d'eau [-]
-# - __wt_maxH__ = hauteur maximale d'un chateau d'eau [m]
+# - __wt_maxH__ : hauteur maximale d'un chateau d'eau [m]
+#
+#__III.2__
+# - __opt_rentTime__ : durée pour rentabilisation [années]
+# - __opt_condPrice__ : prix d'une conduite [€/m$^3$]
 
 # %%
 import numpy as np
 from scipy.optimize import linprog
+
 P = np.array([
               [-9.6,  2.7, 0.08394446], [-9.6, -2.7, 0.04472090],
               [-6.9,  7.1, 0.09969025], [-6.9, -7.1, 0.01909555],
@@ -183,8 +188,11 @@ I_pts = np.array([5, 6, 7, 11, 12, 15, 19, 20, 21, 22, 23, 25, 26, 27, 29, 30, 3
 wt_maxPrice = 120*10**6
 wt_price = 30*10**6
 wt_rentTime = 10
-wt_pts = A_pts
+wt_pts = np.concatenate([A_pts])
 wt_maxH = 1.7
+
+opt_rentTime = 10
+opt_condPrice = 2200
 
 # %% [markdown]
 ##### Calcul de valeurs, vecteurs et matrices utiles :
@@ -205,12 +213,13 @@ maxDeb = debFactor*dZ
 C_prices = np.full(len(C_pts), C_price)
 
 Prices = np.zeros(m) ; Prices[C_pts] = C_prices ; Prices[A_pts] = A_cost
+Prices_surpl = np.copy(Prices) ; Prices_surpl[C_pts] = Prices_surpl[C_pts] / 2
 # %% [markdown]
 ### Partie 1 : Analyse d'un réseau existant
 #### Résolution numérique de la maximisation du bénéfice
 ##### Correspondance entre la modélisation et le le code :
 # - __c__ : $\hspace{1cm} \underset{f_j, j=1,...,n}{\text{maximiser}} \hspace{0.5cm} \mathbf{p}^T \mathbf{A f}$
-# - __ub_1__ : $\hspace{1cm} \mathbf{a}_i \mathbf{f} \geq   d_{min,i} \hspace{1.5cm} \forall i \in \mathcal{C}$
+# - __ub_1__ : $\hspace{1.5cm} \mathbf{a}_i \mathbf{f} \geq   d_{min,i} \hspace{1.5cm} \forall i \in \mathcal{C}$
 # - __ub_2__ : $\hspace{1.5cm} \mathbf{a}_i \mathbf{f} \leq   d_{max,i} \hspace{1.5cm} \forall i \in \mathcal{C}$
 # - __ub_3__ : $\hspace{1.5cm} \mathbf{a}_i \mathbf{f} \geq - d_{max,i} \hspace{1.5cm} \forall i \in \mathcal{S}$
 # - __eq__ :   $\hspace{1.95cm} \mathbf{a}_i \mathbf{f} =      0         \hspace{1.5cm} \forall i \in \mathcal{I}$
@@ -260,41 +269,35 @@ for i in C_pts :
 ### Partie 2 : Améliorations du réseau
 #### Résolution numérique du dépassement de la demande conduisant à une diminution du prix
 ##### Correspondance entre la modélisation et le le code :
-# - __c__ : $\hspace{1cm} \underset{f_j, j=1,...,n}{\text{maximiser}} \hspace{0.5cm} \mathbf{p}^T \mathbf{A f}$
-# - __ub_1__ : $\hspace{1cm} \mathbf{a}_i \mathbf{f} \geq   d_{min,i} \hspace{1.5cm} \forall i \in \mathcal{C}$
+# - __c__ : $\hspace{1cm} \underset{f_j, f_{surplus,j},j=1,...,n}{\text{maximiser}} \hspace{0.5cm} \mathbf{p_{tot}}^T \mathbf{A_{tot} f_{tot}}$
+# - __ub_1__ : $\hspace{1.5cm} f_j + f_{surplus,j} \leq   f_{max,j} \hspace{1.5cm} \forall j \in \{1,...,n\}$
 # - __ub_2__ : $\hspace{1.5cm} \mathbf{a}_i \mathbf{f} \leq   d_{max,i} \hspace{1.5cm} \forall i \in \mathcal{C}$
-# - __ub_3__ : $\hspace{1.5cm} \mathbf{a}_i \mathbf{f} \geq - d_{max,i} \hspace{1.5cm} \forall i \in \mathcal{S}$
-# - __eq__ :   $\hspace{1.95cm} \mathbf{a}_i \mathbf{f} =      0         \hspace{1.5cm} \forall i \in \mathcal{I}$
-# - __bounds__ : $\hspace{1.05cm} 0 \leq f_j \leq f_{max,j}           \hspace{1.5cm} \forall j \in \{1,...,n\}$
-
-# \begin{array}{lllll}
-#     \underset{\underset{j=1,...,n}{f_j, f_{surplus,j}}}{\text{maximiser}} & \mathbf{p_{tot}}^T \mathbf{A_{tot} f_{tot}} &     &   & \\
-#                 & \mathbf{a}_i \mathbf{f} + \mathbf{a}_i \mathbf{f_{surplus}} & = & 0 & \forall i \in \mathcal{I} \\
-#                 & \mathbf{a}_i \mathbf{f} + \mathbf{a}_i \mathbf{f_{surplus}}  & \geq & - d_{max,i} & \forall i \in \mathcal{S} \\
-#                 & \mathbf{a}_i \mathbf{f}       & \geq & d_{min,i} & \forall i \in \mathcal{C} \\
-#                 & \mathbf{a}_i \mathbf{f}       & \leq & d_{max,i} & \forall i \in \mathcal{C}\\
-#                 & \mathbf{a}_i \mathbf{f_{surplus}}  & \leq & \frac{1}{4} d_{max,i} & \forall i \in \mathcal{C}\\
-#                 & f_j + f_{surplus,j}     & \leq & f_{max,j}    & \forall j \in \{1,...,n\} \\
-#                 & f_j    & \geq & 0             & \forall j \in \{1,...,n\}\\
-#                 & f_{surplus,j}    & \geq & 0             & \forall j \in \{1,...,n\}
-# \end{array}
+# - __ub_3__ : $\hspace{1.5cm} \mathbf{a}_i \mathbf{f_{surplus}} \leq   \frac{1}{4} d_{max,i} \hspace{1.5cm} \forall i \in \mathcal{C}$
+# - __ub_4__ : $\hspace{1.5cm} \mathbf{a}_i \mathbf{f} + \mathbf{a}_i \mathbf{f_{surplus}} \geq   d_{min,i} \hspace{1.5cm} \forall i \in \mathcal{C}$
+# - __ub_5__ : $\hspace{1.5cm} - (\mathbf{a}_i \mathbf{f} + \mathbf{a}_i \mathbf{f_{surplus}}) \leq   d_{max,i} \hspace{1.5cm} \forall i \in \mathcal{S}$
+# - __eq__ :   $\hspace{1.95cm} \mathbf{a}_i \mathbf{f} + \mathbf{a}_i \mathbf{f_{surplus}} =      0         \hspace{1.5cm} \forall i \in \mathcal{I}$
+# - __bounds__ : $\hspace{1.05cm} 0 \leq f_j, f_{surplus,j}          \hspace{1.5cm} \forall j \in \{1,...,n\}$
 
 # %%
-Prices_surpl = np.copy(Prices) ; Prices_surpl[C_pts] = Prices_surpl[C_pts] / 2
 c1 = Prices      .T @ A
 c2 = Prices_surpl.T @ A
 c = np.concatenate([c1, c2])
 
 A_ub1 =  np.hstack( [ np.identity(n), np.identity(n) ] )
 b_ub1 =  maxDeb
+
 A_ub2 =  np.hstack( [ A[C_pts]      , np.zeros(A[C_pts].shape) ] )
 b_ub2 =  C_maxDeb
+
 A_ub3 =  np.hstack( [ np.zeros(A[C_pts].shape) , A[C_pts]      ] )
 b_ub3 =  C_maxDeb*0.25
+
 A_ub4 = -np.hstack( [ A[C_pts]      , A[C_pts]       ] )
 b_ub4 = -C_minDeb
+
 A_ub5 = -np.hstack( [ A[A_pts]      , A[A_pts]       ] )
 b_ub5 =  A_maxDeb
+
 A_ub  = np.vstack(     [A_ub1, A_ub2, A_ub3, A_ub4, A_ub5])
 b_ub  = np.concatenate([b_ub1, b_ub2, b_ub3, b_ub4, b_ub5])
 
@@ -331,43 +334,45 @@ for i in C_pts :
 Prices_surpl = np.copy(Prices) ; Prices_surpl[C_pts] = Prices_surpl[C_pts] / 2
 c1 = Prices      .T @ A
 c2 = Prices_surpl.T @ A
-c3 = - np.full(len(wt_pts), wt_price*1000/(365*24*wt_rentTime))
+c3 = - np.full(m, wt_price*1000/(365*24*wt_rentTime))
 c = np.concatenate([c1, c2, c3])
 
-A_ub1 =  np.hstack( [ np.identity(n) , np.identity(n) , -A[wt_pts].T*debFactor[None,wt_pts] ] )
+A_ub1 =  np.hstack( [ np.identity(n) , np.identity(n) , -A.T*debFactor[:,None] ] )
 b_ub1 =  maxDeb
 
-A_ub2 =  np.hstack( [ A[C_pts], np.zeros(A[C_pts].shape), np.zeros((len(A[C_pts]),len(wt_pts))) ] )
+A_ub2 =  np.hstack( [ A[C_pts], np.zeros(A[C_pts].shape), np.zeros((len(A[C_pts]),m)) ] )
 b_ub2 =  C_maxDeb
 
-A_ub3 =  np.hstack( [ np.zeros(A[C_pts].shape), A[C_pts], np.zeros((len(A[C_pts]),len(wt_pts))) ] )
+A_ub3 =  np.hstack( [ np.zeros(A[C_pts].shape), A[C_pts], np.zeros((len(A[C_pts]),m)) ] )
 b_ub3 =  C_maxDeb*0.25
 
-A_ub4 = -np.hstack( [ A[C_pts], A[C_pts]                , np.zeros((len(A[C_pts]),len(wt_pts))) ] )
+A_ub4 = -np.hstack( [ A[C_pts], A[C_pts]                , np.zeros((len(A[C_pts]),m)) ] )
 b_ub4 = -C_minDeb
 
-A_ub5 = -np.hstack( [ A[A_pts], A[A_pts]                , np.zeros((len(A[A_pts]),len(wt_pts))) ] )
+A_ub5 = -np.hstack( [ A[A_pts], A[A_pts]                , np.zeros((len(A[A_pts]),m)) ] )
 b_ub5 =  A_maxDeb
 
-A_ub6 =  np.concatenate( [np.zeros(2*n) , np.ones(len(wt_pts))*wt_price*1000 ])
+A_ub6 =  np.concatenate( [np.zeros(2*n) , np.ones(m)*wt_price*1000 ])
 b_ub6 =  np.array(wt_maxPrice)
 
 A_ub = np.vstack(     [A_ub1,A_ub2,A_ub3,A_ub4,A_ub5,A_ub6.reshape(1,A_ub6.shape[0])])
-b_ub = np.concatenate([b_ub1,b_ub2,b_ub3,b_ub4,b_ub5,b_ub6.reshape(1)])
+b_ub = np.concatenate([b_ub1,b_ub2,b_ub3,b_ub4,b_ub5,b_ub6.reshape(1)               ])
 
-bounds1 = np.array([(0.0, None) for i in range(2*n)])
-bounds2 = np.array([(0.0, wt_maxH/1000) for i in range(len(wt_pts))])
+bounds1 = [(0.0, None) for _ in range(2*n)]
+bds_2 = np.full((m,2), 0.0) ; bds_2[wt_pts, 1] = wt_maxH/1000
+bounds2 = [(bds_2[i,0], bds_2[i,1]) for i in range(len(bds_2))]
 bounds  = np.concatenate([bounds1, bounds2])
 
-A_eq  =  np.hstack( [ A[I_pts], A[I_pts]                , np.zeros((len(A[I_pts]),len(wt_pts))) ] )
+A_eq  =  np.hstack( [ A[I_pts], A[I_pts]                , np.zeros((len(A[I_pts]),m)) ] )
 b_eq  =  np.zeros(len(I_pts))
 
-x = linprog(-c, A_ub, b_ub, A_eq, b_eq, bounds, options={"disp": True, "tol": 1e-8}); x.fun = -x.fun
+x = linprog(-c, A_ub, b_ub, A_eq, b_eq, bounds, options={"disp": True}); x.fun = -x.fun
 
 theta = (x.x[0:n] + x.x[n:2*n]) / maxDeb
 bilan = A @ (x.x[0:n] + x.x[n:2*n])
 # %% [markdown]
 ##### Maximum :
+print(x)
 print("=======")
 print(x.fun)
 print(x.fun*24*365*10)
@@ -376,3 +381,70 @@ print("Coûts [€/h] : " + str(Prices[A_pts].T @ A[A_pts] @ x.x[0:n] + Prices_s
 print("Vente [€/h] : " + str(Prices[C_pts].T @ A[C_pts] @ x.x[0:n] + Prices_surpl[C_pts].T @ A[C_pts] @ x.x[n:2*n]))
 print("=======")
 print("Chateaux : " + str(wt_price*1000*np.sum(x.x[2*n:])))
+# %% [markdown]
+### Partie 3 : Améliorations du réseau
+#### Résolution numérique du dépassement de la demande conduisant à une diminution du prix
+##### Création de la matrice d'incidence
+
+# %%
+n = np.sum(np.arange(m))
+
+A = np.zeros((m,n))
+
+nbr = m-1
+index = 0
+while nbr > 0:
+  A[0:m-nbr-1 , index:index+nbr] = np.zeros   ((m-nbr-1, nbr))
+  A[m-nbr-1   , index:index+nbr] = np.ones    (( 1     , nbr))
+  A[m-nbr:    , index:index+nbr] = np.identity(  nbr         )
+  index += nbr
+  nbr   -= 1
+
+for i in range(n):
+  H = P[:,2]*A[:,i]
+  A[H.argmax(),i] = -1
+# %% [markdown]
+##### Calcul de valeurs, vecteurs et matrices utiles :
+
+# %%
+dX = A.T @ P[:,0]
+dY = A.T @ P[:,1]
+dZ = A.T @ P[:,2]
+length = np.sqrt(dX*dX + dY*dY + dZ*dZ)
+debFactor = -(alpha/length)*dZ
+
+# %%
+
+c1 = Prices      .T @ A *365*24*opt_rentTime
+c2 = Prices_surpl.T @ A *365*24*opt_rentTime
+c3 = np.pi*length*1000*opt_condPrice
+c = np.concatenate([c1, c2]) - np.concatenate([c3, c3])
+
+A_ub1 =  np.hstack( [ A[C_pts]*debFactor[None,:] , np.zeros(A[C_pts].shape) ] )
+b_ub1 =  C_maxDeb
+
+A_ub2 =  np.hstack( [ np.zeros(A[C_pts].shape) , A[C_pts]*debFactor[None,:] ] )
+b_ub2 =  C_maxDeb*0.25
+
+A_ub3 = -np.hstack( [ A[C_pts]*debFactor[None,:] , A[C_pts]*debFactor[None,:] ] )
+b_ub3 = -C_minDeb
+
+A_ub4 = -np.hstack( [ A[A_pts]*debFactor[None,:] , A[A_pts]*debFactor[None,:] ] )
+b_ub4 =  A_maxDeb
+
+A_ub  = np.vstack(     [A_ub1, A_ub2, A_ub3, A_ub4])
+b_ub  = np.concatenate([b_ub1, b_ub2, b_ub3, b_ub4])
+
+A_eq  =  np.hstack( [ A[I_pts]*debFactor[None,:] , A[I_pts]*debFactor[None,:] ] )
+b_eq  =  np.zeros(len(I_pts))
+
+bounds = np.array([(0.0, None) for i in range(2*n)])
+
+
+x = linprog(-c, A_ub, b_ub, A_eq, b_eq, bounds, options={"disp": True}); x.fun = -x.fun
+print(x)
+rC = np.sqrt(x.x[0:n] + x.x[n:2*n])
+
+for i in range(n):
+  if rC[i] > 0:
+    print("conduite " + str(i) + " => rayon = " + str(rC[i]) + " -- pt de départ : " + str(A[:,i].argmin()) + " -- pt d'arrivée : " + str(A[:,i].argmax()) + "-- longueur : " + str(length[i]))
